@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">GunBirdGame</string>
+    <string name="title_game">GUN BIRD!</string>
+    <string name="play_game">Play</string>
+</resources>
