@@ -1,12 +1,22 @@
 package com.example.kaido.gunbirdgame.views;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
+import android.media.SoundPool;
+import android.os.Build;
 import android.view.MotionEvent;
 import android.view.SurfaceView;
 
+import com.example.kaido.gunbirdgame.R;
+import com.example.kaido.gunbirdgame.activity.GameActivity;
+import com.example.kaido.gunbirdgame.activity.MainActivity;
 import com.example.kaido.gunbirdgame.model.Bird;
 import com.example.kaido.gunbirdgame.model.Bullets;
 import com.example.kaido.gunbirdgame.model.Flight;
@@ -18,18 +28,37 @@ import java.util.Random;
 public class GameView extends SurfaceView implements Runnable {
 
     private Thread thread;
+    private GameActivity gameActivity;
+    private SharedPreferences preferences;
+    private SoundPool soundPool;
     private boolean isPlaying, isGameOver = false;
-    private int screenX, screenY;
+    private int screenX, screenY, score = 0;
     public static float screenRatioX, screenRatioY;
     private Paint paint;
     private Flight flight;
     List<Bullets> bulletsList;
     private Bird[] birds;
     private Random random;
+    private int sound;
     private BackgroundView backgroundPre, backgroundNex;
 
-    public GameView(Context context, int screenX, int screenY) {
-        super(context);
+    public GameView(GameActivity gameActivity, int screenX, int screenY) {
+        super(gameActivity);
+        this.gameActivity = gameActivity;
+        preferences = gameActivity.getSharedPreferences("game", Context.MODE_PRIVATE);
+
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .build();
+            soundPool = new SoundPool.Builder()
+                    .setAudioAttributes(audioAttributes)
+                    .build();
+        } else
+            soundPool = new SoundPool(1, AudioManager.STREAM_MUSIC,0);
+
+        sound = soundPool.load(gameActivity, R.raw.shoot, 0);
         this.screenX = screenX;
         this.screenY = screenY;
         backgroundPre = new BackgroundView(screenX, screenY, getResources());
@@ -37,6 +66,8 @@ public class GameView extends SurfaceView implements Runnable {
 
         backgroundNex.x = screenX;
         paint = new Paint();
+        paint.setTextSize(128);
+        paint.setColor(Color.WHITE);
         screenRatioX = 1920f / screenX;
         screenRatioY = 1080f / screenY;
 
@@ -102,6 +133,7 @@ public class GameView extends SurfaceView implements Runnable {
 
             for(Bird bird: birds) {
                if(Rect.intersects(bird.getColisionShape(), bullet.getColisionShape())){
+                   score += 10;
                    bird.x = -500;
                    bullet.x = screenX + 500;
                    bird.isDied = true;
@@ -145,21 +177,43 @@ public class GameView extends SurfaceView implements Runnable {
             canvas.drawBitmap(backgroundPre.background, backgroundPre.x, backgroundPre.y, paint);
             canvas.drawBitmap(backgroundNex.background, backgroundNex.x, backgroundNex.y, paint);
 
+            for(Bird bird : birds) {
+                canvas.drawBitmap(bird.getBird(), bird.x, bird.y, paint);
+            }
+            canvas.drawText(score + "", screenX / 2f, 164, paint);
             if(isGameOver) {
                 isPlaying = false;
                 canvas.drawBitmap(flight.getDead(),flight.x, flight.y, paint);
                 getHolder().unlockCanvasAndPost(canvas);
+                saveHighScore();
+                waitBeforeExiting();
                 return;
             }
 
-            for(Bird bird : birds) {
-                canvas.drawBitmap(bird.getBird(), bird.x, bird.y, paint);
-            }
+
             canvas.drawBitmap(flight.getFlight(), flight.x, flight.y, paint);
             for (Bullets bullets : bulletsList)
                 canvas.drawBitmap(bullets.bullet, bullets.x, bullets.y, paint);
 
             getHolder().unlockCanvasAndPost(canvas);
+        }
+    }
+
+    private void waitBeforeExiting() {
+        try {
+            Thread.sleep(5000);
+            gameActivity.startActivity(new Intent(gameActivity, MainActivity.class));
+            gameActivity.finish();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void saveHighScore() {
+        if(preferences.getInt("highscore", 0) < score) {
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putInt("highscore", score);
+            editor.apply();
         }
     }
 
@@ -199,6 +253,9 @@ public class GameView extends SurfaceView implements Runnable {
     }
 
     public void newBullet() {
+        if(!preferences.getBoolean("isMuted", false)) {
+            soundPool.play(sound,1,1,0,0,1);
+        }
         Bullets bullets = new Bullets(getResources());
         bullets.x = flight.x + flight.width;
         bullets.y = flight.y + (flight.height / 2);
