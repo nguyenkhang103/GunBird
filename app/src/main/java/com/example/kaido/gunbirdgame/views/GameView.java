@@ -147,10 +147,10 @@ public class GameView extends SurfaceView implements Runnable {
         for (Bird bird : birds) {
             bird.x -= bird.speed;
             if(bird.x + bird.width < 0) {
-                if(!bird.isDied) {
-                    isGameOver = true;
-                    return;
-                }
+//                if(!bird.isDied) {
+//                    isGameOver = true;
+//                    return;
+//                }
 
                 int bound = (int) (30 * screenRatioX);
                 bird.speed = random.nextInt(bound);
