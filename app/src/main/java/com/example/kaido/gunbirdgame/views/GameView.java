@@ -147,12 +147,8 @@ public class GameView extends SurfaceView implements Runnable {
         for (Bird bird : birds) {
             bird.x -= bird.speed;
             if(bird.x + bird.width < 0) {
-//                if(!bird.isDied) {
-//                    isGameOver = true;
-//                    return;
-//                }
 
-                int bound = (int) (30 * screenRatioX);
+                int bound = (int) (15 * screenRatioX);
                 bird.speed = random.nextInt(bound);
 
                 if (bird.speed < 10 * screenRatioX)
@@ -201,7 +197,7 @@ public class GameView extends SurfaceView implements Runnable {
 
     private void waitBeforeExiting() {
         try {
-            Thread.sleep(5000);
+            Thread.sleep(1000);
             gameActivity.startActivity(new Intent(gameActivity, MainActivity.class));
             gameActivity.finish();
         } catch (InterruptedException e) {
